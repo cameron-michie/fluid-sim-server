@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time 2D Voronoi Diagram with Ably Spaces</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://d3js.org/d3-delaunay.v6.min.js"></script>
+    <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+    <script src="https://cdn.ably.com/spaces/0.4.0/iife/index.bundle.js"></script>  
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        svg {
+            border: 1px solid black;
+        }
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        (async function() {
+            // Ably setup
+            const ably = new Ably.Realtime({key: '0GHh-Q.M8fW0w:YJKOVLZO7f0pj6z6BRvCbPzM_absDlhfXjdb7AYgpo4', clientId: "John"});
+            
+            await ably.connection.once('connected');
+            console.log('Connected to Ably!');
+            
+            const channel = ably.channels.get('particle-positions');
+            const bombChannel = ably.channels.get('bomb-updates');
+
+            // Set up the SVG canvas
+            const width = 800;
+            const height = 600;
+            const svg = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            // Function to draw the Voronoi diagram
+            function drawVoronoi(coords) {
+                // Clear previous drawing
+                svg.selectAll("*").remove();
+
+                // Compute the Delaunay triangulation and Voronoi diagram
+                const delaunay = d3.Delaunay.from(coords);
+                const voronoi = delaunay.voronoi([0, 0, width, height]);
+
+                // Draw the Voronoi cells
+                svg.append("g")
+                    .selectAll("path")
+                    .data(coords.map((d, i) => voronoi.cellPolygon(i)))
+                    .enter().append("path")
+                    .attr("d", d => "M" + d.join("L") + "Z")
+                    .attr("fill", "none")
+                    .attr("stroke", "black");
+            }
+
+            // Subscribe to the Ably channel to get particle positions
+            await channel.subscribe(message => {
+                const coordsString = message.data;
+                const coords = JSON.parse(coordsString);
+                drawVoronoi(coords);
+            });
+
+             // Ably Spaces setup
+            const spaces = new Spaces(ably);
+            const space = await spaces.get('example-space', { offlineTimeout: 180_000 });
+
+
+            const updateAvatarStack = async () => {
+                const members = await space.members.getAll();
+                const allCursors = await space.cursors.getAll();
+                console.log(allCursors);
+                renderAvatarStack(members, allCursors);
+            };
+
+            await space.enter({ name: 'Helmut' });
+            space.members.subscribe('update', updateAvatarStack);
+            space.members.subscribe('leave', updateAvatarStack);
+            space.members.subscribe('remove', updateAvatarStack);
+
+            const myMemberInfo = await space.members.getSelf();
+            const { connectionId, isConnected, lastEvent, location, profileData } = myMemberInfo;
+
+            // Initial render
+            updateAvatarStack();
+
+            svg.on("mousemove", function(event) {
+                    const [x, y] = d3.pointer(event);
+                    space.cursors.set({ position: { x: x, y: y }, data: { color: 'green' } });
+                    document.getElementById('d3-pointer-event').innerText = `Cursor Position: (x: ${x}, y: ${y})`;
+                });
+
+                svg.on("mouseout", function() {
+                    space.cursors.set({ position: { x: 0, y: 0 }, data: { color: 'red' } });
+                    document.getElementById('d3-pointer-event').innerText = `Cursor Position: (x: , y: )`;
+                });
+
+            svg.on("click", function(event) {
+                const [x, y] = d3.pointer(event);
+                if (x >= 0 && x <= width && y >= 0 && y <= height) {
+                    bombChannel.publish('bomb-update', { x, y });
+                }
+            });
+
+        })();
+
+        function renderAvatarStack(avatars, cursors) {
+            // Create the table and headers
+            let table = `
+                <table border="1">
+                    <tr>
+                        <th>Username</th>
+                        <th>Client ID</th>
+                        <th>Connection ID</th>
+                        <th>Status</th>
+                        <th>Last Event</th>
+                        <th>Timestamp</th>
+                        <th>x</th>
+                        <th>y</th>
+                    </tr>
+            `;
+
+            // Populate the table with avatar data
+            avatars.forEach(avatar => {
+                const { clientId, connectionId, isConnected, lastEvent, location, profileData } = avatar;
+                const { username } = profileData;
+                const status = isConnected ? "Connected" : "Disconnected";
+                const timestamp = new Date(lastEvent.timestamp).toLocaleString();
+
+                // Find the corresponding cursor position
+                const cursor = cursors[connectionId] || { position: { x: 'N/A', y: 'N/A' } };
+                
+                table += `
+                    <tr>
+                        <td>${username}</td>
+                        <td>${clientId}</td>
+                        <td>${connectionId}</td>
+                        <td>${status}</td>
+                        <td>${lastEvent.name}</td>
+                        <td>${timestamp}</td>
+                        <td>${cursor.position.x}</td>
+                        <td>${cursor.position.y}</td>
+                    </tr>
+                `;
+            });
+
+            table += `</table>`;
+
+            // Render the table in the document
+            const tableContainer = document.getElementById('avatar-table');
+            tableContainer.innerHTML = table;
+        }
+
+    </script>
+    <!-- <div id="avatar-table"></div> -->
+    <div id="d3-pointer-event"></div>
+</body>
+</html>
