@@ -47,6 +47,7 @@ def get_particle_coords(sim):
 def subtract_and_shift(arr, func, sim):
     if not arr: return []  # Check if empty
     count_zeros_removed, result = 0, []
+    print(arr)
     
     for x in arr:
         if x > 1: result.append(x - 1)
@@ -65,6 +66,7 @@ async def process_simulation(sim, channel):
         coords_json = json.dumps(coords_dict)
         await channel.publish(f"positions-{_}", coords_json)
         bombsTicker = subtract_and_shift(bombsTicker, lib.SimulationWrapper_removeBombParticle, sim)
+        await asyncio.sleep(0.5)
 
 async def listener(message, queue):
     await queue.put(message)

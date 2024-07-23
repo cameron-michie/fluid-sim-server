@@ -142,7 +142,9 @@ void Simulation::addBombParticle(float x, float y) {
 }
 
 void Simulation::removeBombParticle() {
-    // bombParticles.erase(bombParticles.begin());
+    if (!bombParticles.empty()) {
+        bombParticles.erase(bombParticles.begin());
+    }
 }
 
 float Simulation::distanceBetweenParticles(Particle p, Particle o) {
