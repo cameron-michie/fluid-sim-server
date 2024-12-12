@@ -1,4 +1,5 @@
 #include "SimulationWrapper.h"
+#include "Window.h"
 
 SimulationWrapper::SimulationWrapper()
     :
@@ -34,7 +35,13 @@ const Coord* SimulationWrapper::getParticleCoords(int* size) {
     coords.clear();
     coords.reserve(particles.size());
     for (const auto& particle : particles) {
-        coords.push_back({particle.position.x, particle.position.y});
+        // Check if the particle is within the boundary margin
+        if (particle.position.x > Window::boundaryMargin &&
+            particle.position.x < Window::width - Window::boundaryMargin &&
+            particle.position.y > Window::boundaryMargin &&
+            particle.position.y < Window::height - Window::boundaryMargin) {
+            coords.push_back({particle.position.x, particle.position.y});
+        }
     }
     *size = coords.size();
     return coords.data();

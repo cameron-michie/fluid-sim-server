@@ -7,7 +7,7 @@ cd "$(dirname "$0")/shared"
 OUTPUT="mylib.so"
 
 # List of source files
-SOURCES="Main.cpp Simulation.cpp Kernel.cpp Particles.cpp RectangularGrid.cpp Grid.cpp SimulationWrapper.cpp"
+SOURCES="Main.cpp Simulation.cpp Kernel.cpp Particles.cpp RectangularGrid.cpp Grid.cpp SimulationWrapper.cpp Triangulate.cpp Delaunator.hpp"
 
 # Compile each source file into an object file
 echo "Compiling source files into object files..."

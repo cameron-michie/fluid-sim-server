@@ -8,6 +8,7 @@ namespace Window {
     constexpr int subgridHeight = 30;
     constexpr int numGridsX = width / subgridWidth;
     constexpr int numGridsY = height / subgridHeight;
+    constexpr int boundaryMargin = 10;
 }
 
 #endif
