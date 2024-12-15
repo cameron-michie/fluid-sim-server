@@ -1,119 +1,100 @@
-#include "delaunator.hpp"
-#include <vector>
-#include <cmath>
-#include "Vector2f.h"
-#include "Particle.h"
 #include "Triangulate.h"
+#include "delaunator.hpp"
+#include <unordered_map>
+#include <cmath>
 
+Triangulate::Triangulate() {}
 
-class Triangulate {
-public:
-    Triangulate(const std::vector<Particle>& particles);
-    std::vector<std::tuple<float, float, float>> triangulate();
-
-private:
-    const std::vector<Particle>& particles;
-    std::vector<double> coords;
-    std::vector<bool> isBoundaryPoint;
-    std::vector<float> densities;
-    std::vector<int> counts;
-
-    void calculateBoundaryPoints(const delaunator::Delaunator& d);
-    void computeAverageDensities(std::vector<std::tuple<float, float, float>>& results, float heightNormalization);
-};
-
-Triangulate::Triangulate(const std::vector<Particle>& particles)
-    : particles(particles) {
-    coords.reserve(particles.size() * 2);
-    for (const auto& particle : particles) {
-        coords.push_back(particle.position.x);
-        coords.push_back(particle.position.y);
+Coord* Triangulate::triangulate(Coord* coords, std::size_t count) {
+    // Flatten Coord array into a vector of doubles
+    std::vector<double> flatCoords;
+    flatCoords.reserve(count * 2); // Only x and y are needed
+    for (std::size_t i = 0; i < count; ++i) {
+        flatCoords.push_back(coords[i].x);
+        flatCoords.push_back(coords[i].y);
     }
-}
 
-std::vector<std::tuple<float, float, float>> Triangulate::triangulate() {
-    delaunator::Delaunator d(coords);
+    // Perform Delaunay triangulation
+    delaunator::Delaunator d(flatCoords);
 
     // Initialize boundary status, densities, and counts
-    isBoundaryPoint.resize(particles.size(), false);
-    densities.resize(particles.size(), 0.0f);
-    counts.resize(particles.size(), 0);
+    std::vector<bool> isBoundaryPoint(count, false);
+    std::vector<float> densities(count, 0.0f);
+    std::vector<int> counts(count, 0);
 
-    // Populate densities and counts based on triangles
+    // Calculate densities and counts from triangles
     for (std::size_t i = 0; i < d.triangles.size(); i += 3) {
-        std::array<std::size_t, 3> triangleIndices = {
+        std::array<std::size_t, 3> triangle = {
             d.triangles[i], d.triangles[i + 1], d.triangles[i + 2]
         };
 
-        for (auto vertex : triangleIndices) {
-            densities[vertex] += 1.0f; // Placeholder: density increment per triangle
+        for (auto vertex : triangle) {
+            densities[vertex] += 1.0f; // Example density increment
             counts[vertex] += 1;
         }
     }
 
     // Mark boundary points
-    calculateBoundaryPoints(d);
+    calculateBoundaryPoints(d.triangles, isBoundaryPoint, count);
 
-    // Prepare result vector
-    std::vector<std::tuple<float, float, float>> results;
-    computeAverageDensities(results, 1.0f); // Assuming height_normalisation = 1.0
+    // Compute average densities and assign them to Coord.z
+    computeAverageDensities(densities, counts, isBoundaryPoint, coords, count, 1.0f); // Assume heightNormalization = 1.0f
 
-    return results;
+    return coords;
 }
 
-void Triangulate::calculateBoundaryPoints(const delaunator::Delaunator& d) {
-    std::unordered_map<std::size_t, std::vector<std::size_t>> edges;
+void Triangulate::calculateBoundaryPoints(const std::vector<std::size_t>& triangles,
+                                          std::vector<bool>& isBoundaryPoint,
+                                          std::size_t pointCount) {
+    std::unordered_map<std::pair<std::size_t, std::size_t>, int, 
+        std::hash<std::size_t>, std::equal_to<std::pair<std::size_t, std::size_t>>> edgeCounts;
 
-    // Extract edges from triangles
-    for (std::size_t i = 0; i < d.triangles.size(); i += 3) {
-        std::array<std::pair<std::size_t, std::size_t>, 3> triangleEdges = {
-            std::make_pair(d.triangles[i], d.triangles[i + 1]),
-            std::make_pair(d.triangles[i + 1], d.triangles[i + 2]),
-            std::make_pair(d.triangles[i + 2], d.triangles[i])
+    for (std::size_t i = 0; i < triangles.size(); i += 3) {
+        std::array<std::pair<std::size_t, std::size_t>, 3> edges = {
+            std::make_pair(triangles[i], triangles[i + 1]),
+            std::make_pair(triangles[i + 1], triangles[i + 2]),
+            std::make_pair(triangles[i + 2], triangles[i])
         };
 
-        for (auto& edge : triangleEdges) {
+        for (auto& edge : edges) {
             if (edge.first > edge.second) std::swap(edge.first, edge.second);
 
-            edges[edge.first].push_back(edge.second);
+            edgeCounts[edge]++;
         }
     }
 
-    // Mark boundary edges (edges that occur only once)
-    for (const auto& edge : edges) {
-        if (edge.second.size() == 1) {
+    for (const auto& [edge, count] : edgeCounts) {
+        if (count == 1) { // Edge appears only once, marking it as a boundary edge
             isBoundaryPoint[edge.first] = true;
-            isBoundaryPoint[edge.second.front()] = true;
+            isBoundaryPoint[edge.second] = true;
         }
     }
 }
 
-void Triangulate::computeAverageDensities(std::vector<std::tuple<float, float, float>>& results, float heightNormalization) {
-    results.reserve(particles.size());
+void Triangulate::computeAverageDensities(const std::vector<float>& densities,
+                                          const std::vector<int>& counts,
+                                          const std::vector<bool>& isBoundaryPoint,
+                                          Coord* coords,
+                                          std::size_t count,
+                                          float heightNormalization) {
+    for (std::size_t i = 0; i < count; ++i) {
+        float averageDensity = (counts[i] > 0) ? heightNormalization * densities[i] / counts[i] : 0.0f;
 
-    // Compute densities for all points
-    for (std::size_t i = 0; i < particles.size(); ++i) {
-        float averageDensity = (counts[i] > 0)
-                                   ? heightNormalization * densities[i] / counts[i]
-                                   : 0;
-
-        // Adjust for boundary points with second-degree neighbors
         if (isBoundaryPoint[i]) {
-            float totalDensity = 0;
+            float totalDensity = 0.0f;
             int totalCount = 0;
 
-            // Find neighbors of this point
-            for (std::size_t j = 0; j < particles.size(); ++j) {
-                if (i == j) continue; // Skip self
-                totalDensity += densities[j];
-                totalCount += counts[j];
+            // Collect second-degree neighbors' data for boundary adjustment
+            for (std::size_t j = 0; j < count; ++j) {
+                if (i != j) { // Avoid self
+                    totalDensity += densities[j];
+                    totalCount += counts[j];
+                }
             }
 
-            averageDensity = (totalCount > 0)
-                                 ? heightNormalization * totalDensity / totalCount
-                                 : 0;
+            averageDensity = (totalCount > 0) ? heightNormalization * totalDensity / totalCount : 0.0f;
         }
 
-        results.emplace_back(particles[i].position.x, particles[i].position.y, averageDensity);
+        coords[i].z = averageDensity; // Update z with computed density
     }
 }

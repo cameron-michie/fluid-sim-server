@@ -47,6 +47,10 @@ const Coord* SimulationWrapper::getParticleCoords(int* size) {
     return coords.data();
 }
 
+const Coord* SimulationWrapper::triangulate(Coord* coords) {
+    return simulation.triangulate(coords);
+}
+
 extern "C" {
 
     SimulationWrapper* SimulationWrapper_new() {
@@ -71,6 +75,10 @@ extern "C" {
 
     const Coord* SimulationWrapper_getParticleCoords(SimulationWrapper* wrapper, int* size) {
         return wrapper->getParticleCoords(size);
+    }
+
+    const Coord* SimulationWrapper_triangulate(SimulationWrapper* wrapper, Coord* coords) {
+        return wrapper->triangulate(coords);
     }
 
 } // extern "C"

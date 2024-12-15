@@ -1,23 +1,25 @@
 #ifndef TRIANGULATE_H
 #define TRIANGULATE_H
 
-#include "Vector2f.h"
-#include "Particle.h"
+#include "Coord.h"
+#include <vector>
 
 class Triangulate {
 public:
-    Triangulate(const std::vector<Particle>& particles);
-    std::vector<std::tuple<float, float, float>> triangulate();
+    Triangulate();
+    Coord* triangulate(Coord* coords, std::size_t count);
 
 private:
-    const std::vector<Particle>& particles;
-    std::vector<double> coords;
-    std::vector<bool> isBoundaryPoint;
-    std::vector<float> densities;
-    std::vector<int> counts;
+    void calculateBoundaryPoints(const std::vector<std::size_t>& triangles,
+                                 std::vector<bool>& isBoundaryPoint,
+                                 std::size_t pointCount);
 
-    void calculateBoundaryPoints(const delaunator::Delaunator& d);
-    void computeAverageDensities(std::vector<std::tuple<float, float, float>>& results, float heightNormalization);
+    void computeAverageDensities(const std::vector<float>& densities,
+                                 const std::vector<int>& counts,
+                                 const std::vector<bool>& isBoundaryPoint,
+                                 Coord* coords,
+                                 std::size_t count,
+                                 float heightNormalization);
 };
 
-#enddef TRIANGULATE_H
+#endif // TRIANGULATE_H

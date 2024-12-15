@@ -16,7 +16,8 @@ lib = ctypes.CDLL(lib_path)
 # Define the Coord structure
 class Coord(ctypes.Structure):
     _fields_ = [("x", ctypes.c_float),
-                ("y", ctypes.c_float)]
+                ("y", ctypes.c_float),
+                ("z", ctypes.c_float)]
 
 # Define the SimulationWrapper structure
 class SimulationWrapper(ctypes.Structure):
@@ -30,16 +31,18 @@ lib.SimulationWrapper_addBombParticle.argtypes = [ctypes.POINTER(SimulationWrapp
 lib.SimulationWrapper_removeBombParticle.argtypes = [ctypes.POINTER(SimulationWrapper)]
 lib.SimulationWrapper_getParticleCoords.argtypes = [ctypes.POINTER(SimulationWrapper), ctypes.POINTER(ctypes.c_int)]
 lib.SimulationWrapper_getParticleCoords.restype = ctypes.POINTER(Coord)
-
+lib.SimulationWrapper_triangulate.argtypes = [ctypes.POINTER(SimulationWrapper), ctypes.POINTER(Coord)]
+lib.SimulationWrapper_triangulate.restype = ctypes.POINTER(Coord)
 
 def coord_to_compact_list(coord):
-    return [round(coord.x, 2), round(coord.y, 2)]
+    return [round(coord.x, 2), round(coord.y, 2), round(coord.z, 2)]
 
 def get_particle_coords(sim):
     size = ctypes.c_int()
     coords_ptr = lib.SimulationWrapper_getParticleCoords(sim, ctypes.byref(size))
+    triangulated_coords_ptr = lib.SimulationWrapper_triangulate(sim, coords_ptr)
 
-    coords = [coords_ptr[i] for i in range(size.value)]
+    coords = [triangulated_coords_ptr[i] for i in range(size.value)]
     coords_list = [coord_to_compact_list(coord) for coord in coords]
     return coords_list
 
