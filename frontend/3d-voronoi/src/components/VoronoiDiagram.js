@@ -3,12 +3,11 @@ import React from 'react';
 import { useChannel } from 'ably/react';
 import ThreeScene from './ThreeScene';
 
-
 const VoronoiDiagram = () => {
   const [points, setPoints] = React.useState([]);
 
   useChannel('particle-positions', (message) => {
-    const coords = JSON.parse(message.data);
+    const coords = message.data; // Use message.data directly
     setPoints(coords);
   });
 
