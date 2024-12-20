@@ -13,7 +13,6 @@
 Triangulate::Triangulate() {}
 
 Coord* Triangulate::triangulate(Coord* particle_coords, size_t input_size) {
-    // std::vector<Coord> triangulated_data = new std::vector<Coord>(input_size);
 
     // Flatten coordinates for Delaunator
     std::vector<double> flat_coords;
@@ -81,12 +80,4 @@ Coord* Triangulate::triangulate(Coord* particle_coords, size_t input_size) {
     }
 
     return triangulatedCoords.data();
-}
-
-const std::vector<Vertex>& Triangulate::getVertices() const {
-    return vertices;
-}
-
-const std::vector<Triangle>& Triangulate::getTriangles() const {
-    return triangles;
 }

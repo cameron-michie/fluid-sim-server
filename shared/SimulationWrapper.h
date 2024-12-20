@@ -22,7 +22,6 @@ extern "C" {
             void removeBombParticle();
             const Coord* triangulate(Coord* coords);
             const Coord* getParticleCoords(int* size);
-            const Coord* getTriangulatedCoords(int* size);
         private:
             std::unique_ptr<RectangularGrid> grid;
             Simulation simulation;

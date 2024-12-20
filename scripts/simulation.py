@@ -21,7 +21,7 @@ def subtract_and_shift(arr, remove_func):
         remove_func()
     return result
 
-async def process_simulation(simulation, channel, raw_channel, bombs_ticker):
+async def process_simulation(simulation, triangleCoordsChannel, particleCoordsChannel, bombs_ticker):
     for iteration in range(500):
         simulation.iterate()
 
@@ -36,12 +36,12 @@ async def process_simulation(simulation, channel, raw_channel, bombs_ticker):
         # print(f"Original size: {sys.getsizeof(coords_json)} bytes")
         # print(f"Compressed size: {sys.getsizeof(compressed_coords)} bytes")
 
-        # await channel.publish(f"positions-{iteration}", compressed_coords)
+        # await triangleCoordsChannel.publish(f"positions-{iteration}", compressed_coords)
 
         # Get raw particle coordinates
         raw_coords_list = [coord_to_list(coord) for coord in coords_array]
         raw_coords_json = json.dumps(raw_coords_list)
-        # await raw_channel.publish(f"raw-positions-{iteration}", raw_coords_json)
+        # await particleCoordsChannel.publish(f"raw-positions-{iteration}", raw_coords_json)
 
         # Update bomb particles
         bombs_ticker[:] = subtract_and_shift(bombs_ticker, simulation.remove_bomb_particle)

@@ -5,24 +5,18 @@
 #include <vector>
 
 struct Vertex {
-    float x, y, z;    // Coordinates
-    float density;    // Density at the vertex
+    float x, y, z; 
+    float density;
 };
 
 struct Triangle {
-    std::size_t v0, v1, v2; // Indices into the vertex list
+    std::size_t v0, v1, v2; 
 };
 
 class Triangulate {
 public:
     Triangulate();
-
-    // Perform triangulation and compute densities
     Coord* triangulate(Coord* coords, size_t input_size);
-
-    // Getters for vertices and triangles
-    const std::vector<Vertex>& getVertices() const;
-    const std::vector<Triangle>& getTriangles() const;
 
 private:
     std::vector<Vertex> vertices;

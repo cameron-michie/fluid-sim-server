@@ -67,18 +67,3 @@ class Simulation:
             ctypes.POINTER(Coord * output_size.value)
         ).contents
         return triangulated_coords_array, output_size.value
-
-    def perform_triangulation(self):
-        lib.SimulationWrapper_performTriangulation(self.sim)
-
-    def get_triangulated_vertices(self):
-        size = ctypes.c_size_t()
-        vertices_ptr = lib.SimulationWrapper_getTriangulatedVertices(self.sim, ctypes.byref(size))
-        vertices_array = ctypes.cast(vertices_ptr, ctypes.POINTER(Vertex * size.value)).contents
-        return vertices_array, size.value
-
-    def get_triangles(self):
-        size = ctypes.c_size_t()
-        triangles_ptr = lib.SimulationWrapper_getTriangles(self.sim, ctypes.byref(size))
-        triangles_array = ctypes.cast(triangles_ptr, ctypes.POINTER(Triangle * size.value)).contents
-        return triangles_array, size.value
