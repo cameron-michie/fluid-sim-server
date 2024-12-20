@@ -1,7 +1,5 @@
-# filepath: /Users/cameronoscarmichie/fluid-sim-server-ably/scripts/simulation.py
 import asyncio
 import json
-import sys
 import zlib
 
 def coord_to_list(coord):
@@ -32,16 +30,12 @@ async def process_simulation(simulation, triangleCoordsChannel, particleCoordsCh
         coords_json = json.dumps(coords_list)
         compressed_coords = zlib.compress(coords_json.encode('utf-8'))
         
-        # Print the size of the original and compressed lists
-        # print(f"Original size: {sys.getsizeof(coords_json)} bytes")
-        # print(f"Compressed size: {sys.getsizeof(compressed_coords)} bytes")
-
-        # await triangleCoordsChannel.publish(f"positions-{iteration}", compressed_coords)
+        await triangleCoordsChannel.publish(f"positions-{iteration}", compressed_coords)
 
         # Get raw particle coordinates
         raw_coords_list = [coord_to_list(coord) for coord in coords_array]
         raw_coords_json = json.dumps(raw_coords_list)
-        # await particleCoordsChannel.publish(f"raw-positions-{iteration}", raw_coords_json)
+        await particleCoordsChannel.publish(f"raw-positions-{iteration}", raw_coords_json)
 
         # Update bomb particles
         bombs_ticker[:] = subtract_and_shift(bombs_ticker, simulation.remove_bomb_particle)

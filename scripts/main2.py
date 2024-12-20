@@ -1,4 +1,3 @@
-# filepath: /Users/cameronoscarmichie/fluid-sim-server-ably/scripts/main.py
 import asyncio
 from sim_wrapper import Simulation
 from simulation import process_simulation, process_messages, listener
