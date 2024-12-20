@@ -6,6 +6,7 @@
 #include <limits>
 #include <vector>
 #include <ostream>
+#include <unordered_map>
 
 namespace delaunator {
 
@@ -117,9 +118,15 @@ public:
     std::vector<std::size_t> hull_tri;
     std::size_t hull_start;
 
+    // Store the area of each triangle
+    std::unordered_map<std::size_t, double> triangle_areas;
+
     Delaunator(std::vector<double> const& in_coords);
     double get_hull_area();
     double get_triangle_area();
+
+    // Function to get neighboring triangle indices
+    std::vector<std::size_t> get_neighboring_triangles(std::size_t triangle_index);
 
 private:
     std::vector<std::size_t> m_hash;

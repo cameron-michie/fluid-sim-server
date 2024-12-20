@@ -1,6 +1,5 @@
 #include "SimulationWrapper.h"
 #include "Window.h"
-#include <iostream>
 
 SimulationWrapper::SimulationWrapper()
     :
@@ -31,7 +30,7 @@ void SimulationWrapper::removeBombParticle() {
     simulation.removeBombParticle();
 }
 
-const Coord* SimulationWrapper::getParticleCoords(size_t* size) {
+const Coord* SimulationWrapper::getParticleCoords(int* size) {
     const auto& particles = simulation.getParticles();
     coords.clear();
     coords.reserve(particles.size());
@@ -45,40 +44,18 @@ const Coord* SimulationWrapper::getParticleCoords(size_t* size) {
         }
     }
     *size = coords.size();
-
-    // Logging the size and coordinates
-    // std::cout << "getParticleCoords - Number of particles: " << *size << std::endl;
-    // for (size_t i = 0; i < coords.size(); ++i) {
-    //     std::cout << "Particle " << i << ": (" << coords[i].x << ", " << coords[i].y << ", " << coords[i].z << ")" << std::endl;
-    // }
     return coords.data();
 }
 
-const Coord* SimulationWrapper::triangulate(const Coord* coords_array, size_t input_size, size_t* output_size) {
-    // Convert Coord array to vector
-    std::vector<Coord> inputCoords(coords_array, coords_array + input_size);
-
-    // Logging input size and coordinates
-    std::cout << "triangulate - Input size: " << input_size << std::endl;
-    for (size_t i = 0; i < 100; ++i) {
-        std::cout << "Input Coord " << i << ": (" << inputCoords[i].x << ", " << inputCoords[i].y << ", " << inputCoords[i].z << ")" << std::endl;
+const Coord* SimulationWrapper::triangulate(Coord* coords) {
+    // Determine the count of coordinates
+    std::size_t count = 0;
+    while (coords[count].x != 0 || coords[count].y != 0 || coords[count].z != 0) {
+        ++count;
     }
-
-    // Perform triangulation
-    std::vector<Coord> triangulatedCoords = triangulateInstance.triangulate(inputCoords);
-
-    // Logging output size and coordinates
-    *output_size = triangulatedCoords.size();
-    std::cout << "triangulate - Output size: " << *output_size << std::endl;
-    for (size_t i = 0; i < 100; ++i) {
-        std::cout << "Triangulated Coord " << i << ": (" << triangulatedCoords[i].x << ", " << triangulatedCoords[i].y << ", " << triangulatedCoords[i].z << ")" << std::endl;
-    }
-
-    // Return triangulated coordinates
-    Coord* result = new Coord[triangulatedCoords.size()];
-    std::copy(triangulatedCoords.begin(), triangulatedCoords.end(), result);
-    return result;
+    return triangulateInstance.triangulate(coords, count);
 }
+
 
 extern "C" {
 
@@ -102,12 +79,12 @@ extern "C" {
         wrapper->removeBombParticle();
     }
 
-    const Coord* SimulationWrapper_getParticleCoords(SimulationWrapper* wrapper, size_t* size) {
+    const Coord* SimulationWrapper_getParticleCoords(SimulationWrapper* wrapper, int* size) {
         return wrapper->getParticleCoords(size);
     }
 
-    const Coord* SimulationWrapper_triangulate(SimulationWrapper* wrapper, const Coord* coords, size_t input_size, size_t* output_size) {
-        return wrapper->triangulate(coords, input_size, output_size);
+    const Coord* SimulationWrapper_triangulate(SimulationWrapper* wrapper, Coord* coords) {
+        return wrapper->triangulate(coords);
     }
 
 } // extern "C"

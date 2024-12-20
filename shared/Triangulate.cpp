@@ -8,87 +8,85 @@
 #include <thread>
 #include <iostream>
 #include "Window.h"
+#include "Coord.h"
 
 Triangulate::Triangulate() {}
 
-std::vector<Coord> Triangulate::triangulate(const std::vector<Coord>& coords) {
-    // Logging input coordinates
-    std::cout << "Triangulate::triangulate - Input size: " << coords.size() << std::endl;
-    for (size_t i = 0; i < 100; ++i) {
-        std::cout << "Coord " << i << ": (" << coords[i].x << ", " << coords[i].y << ", " << coords[i].z << ")" << std::endl;
-    }
-
-    // Compute min and max of input coordinates
-    float min_x = std::numeric_limits<float>::max();
-    float max_x = std::numeric_limits<float>::lowest();
-    float min_y = std::numeric_limits<float>::max();
-    float max_y = std::numeric_limits<float>::lowest();
-
-    for (const auto& coord : coords) {
-        if (coord.x < min_x) min_x = coord.x;
-        if (coord.x > max_x) max_x = coord.x;
-        if (coord.y < min_y) min_y = coord.y;
-        if (coord.y > max_y) max_y = coord.y;
-    }
-
-    // Avoid division by zero
-    float range_x = max_x - min_x;
-    float range_y = max_y - min_y;
-    if (range_x == 0) range_x = 1.0f;
-    if (range_y == 0) range_y = 1.0f;
-
-    // Compute scaling factors
-    float scale_x = static_cast<float>(Window::width) / range_x;
-    float scale_y = static_cast<float>(Window::height) / range_y;
+Coord* Triangulate::triangulate(Coord* particle_coords, size_t input_size) {
+    // std::vector<Coord> triangulated_data = new std::vector<Coord>(input_size);
 
     // Flatten coordinates for Delaunator
     std::vector<double> flat_coords;
-    for (const auto& coord : coords) {
+    for (int i=0; i < input_size; ++i) {
+        Coord coord = *(particle_coords+i); // Access ith element in vector starting at coord*
         flat_coords.push_back(static_cast<double>(coord.x));
         flat_coords.push_back(static_cast<double>(coord.y));
     }
 
-    // Compute Delaunay triangulation
+    // Perform Delaunay triangulation
     delaunator::Delaunator delaunay(flat_coords);
     const auto& triangles = delaunay.triangles;
 
-    // Prepare triangulated coordinates
-    std::vector<Coord> triangulatedCoords;
-
+    // Compute area of each triangle
+    std::vector<double> triangle_areas(triangles.size() / 3);
     for (size_t i = 0; i < triangles.size(); i += 3) {
         size_t t0 = triangles[i];
         size_t t1 = triangles[i + 1];
         size_t t2 = triangles[i + 2];
 
-        double x0 = delaunay.coords[2 * t0];
-        double y0 = delaunay.coords[2 * t0 + 1];
+        const Coord& v0 = particle_coords[t0];
+        const Coord& v1 = particle_coords[t1];
+        const Coord& v2 = particle_coords[t2];
 
-        double x1 = delaunay.coords[2 * t1];
-        double y1 = delaunay.coords[2 * t1 + 1];
+        double area = 0.5 * std::abs(
+            (v1.x - v0.x) * (v2.y - v0.y) -
+            (v2.x - v0.x) * (v1.y - v0.y)
+        );
 
-        double x2 = delaunay.coords[2 * t2];
-        double y2 = delaunay.coords[2 * t2 + 1];
-
-        // Rescale coordinates to [0, Window::width] and [0, Window::height]
-        float rescaled_x0 = (static_cast<float>(x0) - min_x) * scale_x;
-        float rescaled_y0 = (static_cast<float>(y0) - min_y) * scale_y;
-        float rescaled_x1 = (static_cast<float>(x1) - min_x) * scale_x;
-        float rescaled_y1 = (static_cast<float>(y1) - min_y) * scale_y;
-        float rescaled_x2 = (static_cast<float>(x2) - min_x) * scale_x;
-        float rescaled_y2 = (static_cast<float>(y2) - min_y) * scale_y;
-
-        float height = 0.0f; // Set Z-coordinate to 0
-
-        triangulatedCoords.push_back(Coord{ rescaled_x0, rescaled_y0, height });
-        triangulatedCoords.push_back(Coord{ rescaled_x1, rescaled_y1, height });
-        triangulatedCoords.push_back(Coord{ rescaled_x2, rescaled_y2, height });
+        triangle_areas[i / 3] = area;
     }
 
-    // Logging output triangulated coordinates
-    std::cout << "Triangulate::triangulate - Output size: " << triangulatedCoords.size() << std::endl;
-    for (size_t i = 0; i < 100; ++i) {
-        std::cout << "Triangulated Coord " << i << ": (" << triangulatedCoords[i].x << ", " << triangulatedCoords[i].y << ", " << triangulatedCoords[i].z << ")" << std::endl;
+    // Accumulate areas for each vertex
+    std::vector<double> vertex_area_sum(input_size, 0.0);
+    for (size_t i = 0; i < triangles.size(); i++) {
+        size_t vertex_index = triangles[i];
+        size_t triangle_index = i / 3;
+        vertex_area_sum[vertex_index] += triangle_areas[triangle_index];
     }
 
-    return triangulatedCoords;
+    // Compute density and set z for each vertex
+    std::vector<float> vertex_densities(input_size, 0.0f);
+    for (size_t i = 0; i < input_size; ++i) {
+        double total_area = vertex_area_sum[i];
+        float density = (total_area > 0.0) ? static_cast<float>(Window::heightMultiplier / total_area) : 0.0f;
+        vertex_densities[i] = density;
+    }
+
+    // Build triangulatedCoords
+    for (size_t i = 0; i < triangles.size(); i += 3) {
+        size_t t0 = triangles[i];
+        size_t t1 = triangles[i + 1];
+        size_t t2 = triangles[i + 2];
+
+        Coord v0 = particle_coords[t0];
+        v0.z = vertex_densities[t0]; // Set z to density
+        Coord v1 = particle_coords[t1];
+        v1.z = vertex_densities[t1];
+        Coord v2 = particle_coords[t2];
+        v2.z = vertex_densities[t2];
+
+        triangulatedCoords.push_back(v0);
+        triangulatedCoords.push_back(v1);
+        triangulatedCoords.push_back(v2);
+    }
+
+    return triangulatedCoords.data();
+}
+
+const std::vector<Vertex>& Triangulate::getVertices() const {
+    return vertices;
+}
+
+const std::vector<Triangle>& Triangulate::getTriangles() const {
+    return triangles;
 }

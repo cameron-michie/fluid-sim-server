@@ -1,9 +1,11 @@
 # filepath: /Users/cameronoscarmichie/fluid-sim-server-ably/scripts/simulation.py
 import asyncio
 import json
+import sys
+import zlib
 
 def coord_to_list(coord):
-    return [round(coord.x, 2), round(coord.y, 2), round(coord.z, 2)]
+    return [round(coord.x, 1), round(coord.y, 1), round(coord.z, 1)]
 
 def subtract_and_shift(arr, remove_func):
     if not arr:
@@ -28,18 +30,23 @@ async def process_simulation(simulation, channel, raw_channel, bombs_ticker):
         triangulated_coords_array, output_size = simulation.triangulate(coords_array, size)
         coords_list = [coord_to_list(coord) for coord in triangulated_coords_array]
         coords_json = json.dumps(coords_list)
-        print(coords_json)
-        await channel.publish(f"positions-{iteration}", coords_json)
+        compressed_coords = zlib.compress(coords_json.encode('utf-8'))
+        
+        # Print the size of the original and compressed lists
+        # print(f"Original size: {sys.getsizeof(coords_json)} bytes")
+        # print(f"Compressed size: {sys.getsizeof(compressed_coords)} bytes")
+
+        # await channel.publish(f"positions-{iteration}", compressed_coords)
 
         # Get raw particle coordinates
         raw_coords_list = [coord_to_list(coord) for coord in coords_array]
         raw_coords_json = json.dumps(raw_coords_list)
-        await raw_channel.publish(f"raw-positions-{iteration}", raw_coords_json)
+        # await raw_channel.publish(f"raw-positions-{iteration}", raw_coords_json)
 
         # Update bomb particles
         bombs_ticker[:] = subtract_and_shift(bombs_ticker, simulation.remove_bomb_particle)
 
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(0.1)
 
 async def listener(message, queue):
     await queue.put(message)

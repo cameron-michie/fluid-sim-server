@@ -2,13 +2,15 @@
 import React from 'react';
 import { useChannel } from 'ably/react';
 import ThreeScene from './ThreeScene';
+import pako from 'pako';
 
 const VoronoiDiagram = () => {
   const [points, setPoints] = React.useState([]);
 
-  useChannel('particle-positions', (message) => {
-    const coords = message.data; // Use message.data directly
+  useChannel('triangulated-coords', (message) => {
+    const coords = JSON.parse(pako.inflate(message.data, { to: 'string' }));
     setPoints(coords);
+    // console.log(coords)
   });
 
   return <ThreeScene points={points} />;

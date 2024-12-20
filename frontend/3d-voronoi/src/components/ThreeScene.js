@@ -10,35 +10,75 @@ function ThreeScene({ points }) {
   useEffect(() => {
     const mount = mountRef.current;
 
+    // Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff); // Set background color to white
+    scene.background = new THREE.Color(0xffffff);
 
+    // Camera setup
     const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
-    camera.position.set(0, 5, 5); // Set camera position for a 30-degree angle
-    camera.lookAt(0, 0, 0); // Look at the center of the scene
+    camera.position.set(0, 250, 0);
+    camera.lookAt(0, 0, 0);
 
+    // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(800, 600);
     mount.appendChild(renderer.domElement);
 
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.setScalar(100);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0xffffff, 1));
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
 
-    const triangleMaterial = new THREE.MeshBasicMaterial({
-      color: 0x87CEEB, // Light blue (hex code for sky blue)
-      transparent: true, // Enable transparency
-      opacity: 0.8, // Base opacity
-      reflectivity: 0.5, // Reflectiveness of the water surface
-      side: THREE.DoubleSide, // Render both sides for thin water surfacesi
-      wireframe: true
-    });
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(10, 10, 10);
+    scene.add(directionalLight);
+
+    // Create a group for triangles
+    const trianglesGroup = new THREE.Group();
+    scene.add(trianglesGroup);
+
+    // Declare triangleMaterial in a higher scope
+    let triangleMaterial;
+
+    // Load the normal map texture correctly
+    const textureLoader = new THREE.TextureLoader();
+    const normalMap = textureLoader.load(
+      '/WATER.jpg',
+      () => {
+        // Texture loaded, create material and mesh
+        triangleMaterial = new THREE.MeshStandardMaterial({
+          color: 0x87CEEB,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide,
+          normalMap: normalMap,
+          metalness: 0.3,
+          roughness: 0.1,
+        });
+
+        // Create the mesh geometry
+        const geometry = new THREE.PlaneGeometry(800, 600, 100, 100); // Adjust size as needed
+        const waterMesh = new THREE.Mesh(geometry, triangleMaterial);
+        waterMesh.rotation.x = -Math.PI / 2; // Rotate to make it horizontal
+        scene.add(waterMesh);
+
+        // Now that the material is ready, draw the triangles
+        drawTriangles(points);
+      },
+      undefined,
+      (error) => {
+        console.error('Texture loading error:', error);
+      }
+    );
 
     const drawTriangles = (pointsData) => {
-      // Clear previous drawing
-      while (scene.children.length > 0) {
-        scene.remove(scene.children[0]);
+      if (!triangleMaterial) return; // Ensure material is available
+
+      // Clear previous triangle meshes
+      while (trianglesGroup.children.length > 0) {
+        const oldMesh = trianglesGroup.children[0];
+        oldMesh.geometry.dispose();
+        oldMesh.material.dispose();
+        trianglesGroup.remove(oldMesh);
       }
 
       // Draw triangles using pointsData
@@ -46,13 +86,11 @@ function ThreeScene({ points }) {
         return; // Not enough points to form a triangle
       }
 
-      // Draw triangles using pointsData
       for (let i = 0; i <= pointsData.length - 3; i += 3) {
         const p0 = pointsData[i];
         const p1 = pointsData[i + 1];
         const p2 = pointsData[i + 2];
 
-        // Ensure points are defined
         if (p0 && p1 && p2) {
           const vertices = new Float32Array([
             p0[0], p0[1], p0[2],
@@ -64,15 +102,14 @@ function ThreeScene({ points }) {
           geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
           const mesh = new THREE.Mesh(geometry, triangleMaterial);
-          scene.add(mesh);
+          trianglesGroup.add(mesh);
         }
       }
 
-      renderer.render(scene, camera);
+      // No need to call renderer.render here; it's handled in animate()
     };
 
-    drawTriangles(points);
-
+    // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
       renderer.render(scene, camera);
@@ -80,6 +117,7 @@ function ThreeScene({ points }) {
 
     animate();
 
+    // Event handler
     const handleCanvasClick = (event) => {
       const [x, y] = d3.pointer(event);
       if (x >= 0 && x <= 800 && y >= 0 && y <= 600) {
@@ -89,11 +127,27 @@ function ThreeScene({ points }) {
 
     renderer.domElement.addEventListener('click', handleCanvasClick);
 
+    // Cleanup function to dispose of WebGL resources
     return () => {
       renderer.domElement.removeEventListener('click', handleCanvasClick);
       mount.removeChild(renderer.domElement);
+
+      // Dispose the renderer
+      renderer.dispose();
+
+      // Dispose of geometries and materials in the scene
+      scene.traverse((object) => {
+        if (object.isMesh) {
+          object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach((material) => material.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
     };
-  }, [points]);
+  }, []); // Empty dependency array ensures useEffect runs once
 
   return <div ref={mountRef} />;
 }

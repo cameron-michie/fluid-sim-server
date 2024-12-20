@@ -9,8 +9,8 @@ async def main():
     ably_client = AblyClient(api_key)
 
     # Get channels
-    channel = ably_client.get_rest_channel('particle-positions')
-    raw_channel = ably_client.get_rest_channel('raw-particle-positions')
+    channel = ably_client.get_rest_channel('triangulated-coords')
+    raw_channel = ably_client.get_rest_channel('particle-coords')
     bomb_channel = ably_client.get_realtime_channel('bomb-updates')
 
     # Create simulation instance

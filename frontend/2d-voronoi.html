@@ -6,6 +6,7 @@
     <title>Real-time 2D Fluid Simulation</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <style>
         body {
             display: flex;
@@ -42,14 +43,14 @@
     </div>
     <script>
         (async function() {
-            const ably = new Ably.Realtime({key: '0GHh-Q.M8fW0w:YJKOVLZO7f0pj6z6BRvCbPzM_absDlhfXjdb7AYgpo4', clientId: "John"});
+            const ably = new Ably.Realtime({ key: '0GHh-Q.M8fW0w:YJKOVLZO7f0pj6z6BRvCbPzM_absDlhfXjdb7AYgpo4', clientId: "ClientID" });
             
             await ably.connection.once('connected');
             console.log('Connected to Ably!');
             
-            const channel = ably.channels.get('particle-positions');
+            const triangulatedChannel = ably.channels.get('triangulated-coords');
+            const particleCoordsChannel = ably.channels.get('particle-coords');
             const bombChannel = ably.channels.get('bomb-updates');
-            const rawChannel = ably.channels.get('raw-particle-positions');
 
             const width = 800;
             const height = 600;
@@ -97,15 +98,18 @@
                     .attr("fill", "red");
             }
 
-            // Subscribe to the triangulated particle positions channel
-            await channel.subscribe(message => {
-                const coordsArray = JSON.parse(message.data);
-                drawTriangulation(coordsArray);
-                console.log(coordsArray);
+            // Subscribe to the triangulated coordinates channel
+            await triangulatedChannel.subscribe(message => {
+                try {
+                    const coordsArray = JSON.parse(pako.inflate(message.data, { to: 'string' }));
+                    drawTriangulation(coordsArray);
+                } catch (error) {
+                    console.error('Error decompressing data:', error);
+                }
             });
 
-            // Subscribe to the raw particle positions channel
-            await rawChannel.subscribe(message => {
+            // Subscribe to the particle coordinates channel
+            await particleCoordsChannel.subscribe(message => {
                 const coordsArray = JSON.parse(message.data);
                 drawRawParticles(coordsArray);
             });

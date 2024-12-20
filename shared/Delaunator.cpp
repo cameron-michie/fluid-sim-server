@@ -1,4 +1,3 @@
-
 #include "Delaunator.h"
 
 #include <iostream>
@@ -464,6 +463,26 @@ Delaunator::Delaunator(std::vector<double> const& in_coords)
         m_hash[hash_key(x, y)] = i;
         m_hash[hash_key(coords[2 * e], coords[2 * e + 1])] = e;
     }
+
+    // After triangulation is complete, compute and store triangle areas
+    for (size_t t = 0; t < triangles.size(); t += 3) {
+        std::size_t i0 = triangles[t];
+        std::size_t i1 = triangles[t + 1];
+        std::size_t i2 = triangles[t + 2];
+
+        double x0 = coords[2 * i0];
+        double y0 = coords[2 * i0 + 1];
+        double x1 = coords[2 * i1];
+        double y1 = coords[2 * i1 + 1];
+        double x2 = coords[2 * i2];
+        double y2 = coords[2 * i2 + 1];
+
+        // Compute the area using the shoelace formula
+        double area = 0.5 * std::abs((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0));
+
+        // Store the area with the triangle index
+        triangle_areas[t / 3] = area;
+    }
 }
 
 double Delaunator::get_hull_area()
@@ -641,6 +660,23 @@ void Delaunator::link(const std::size_t a, const std::size_t b) {
             throw std::runtime_error("Cannot link edge");
         }
     }
+}
+
+// Function to get neighboring triangle indices
+std::vector<std::size_t> Delaunator::get_neighboring_triangles(std::size_t triangle_index) {
+    std::vector<std::size_t> neighbors;
+    std::size_t t = triangle_index * 3;
+
+    for (std::size_t i = 0; i < 3; ++i) {
+        std::size_t halfedge_index = t + i;
+        std::size_t opposite = halfedges[halfedge_index];
+
+        if (opposite != INVALID_INDEX) {
+            std::size_t neighbor_triangle = opposite / 3;
+            neighbors.push_back(neighbor_triangle);
+        }
+    }
+    return neighbors;
 }
 
 } //namespace delaunator
