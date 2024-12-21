@@ -29,7 +29,6 @@ async def process_simulation(simulation, triangleCoordsChannel, particleCoordsCh
         coords_list = [coord_to_list(coord) for coord in triangulated_coords_array]
         coords_json = json.dumps(coords_list)
         compressed_coords = zlib.compress(coords_json.encode('utf-8'))
-        
         await triangleCoordsChannel.publish(f"positions-{iteration}", compressed_coords)
 
         # Get raw particle coordinates

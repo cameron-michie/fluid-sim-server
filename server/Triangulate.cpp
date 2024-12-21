@@ -12,7 +12,9 @@
 
 Triangulate::Triangulate() {}
 
-Coord* Triangulate::triangulate(Coord* particle_coords, size_t input_size) {
+std::vector<Coord> Triangulate::triangulate(Coord* particle_coords, size_t input_size) {
+    triangulatedCoords.clear();
+    triangulatedCoords.reserve(input_size);
 
     // Flatten coordinates for Delaunator
     std::vector<double> flat_coords;
@@ -77,7 +79,9 @@ Coord* Triangulate::triangulate(Coord* particle_coords, size_t input_size) {
         triangulatedCoords.push_back(v0);
         triangulatedCoords.push_back(v1);
         triangulatedCoords.push_back(v2);
+
+        // std::cout<<v0.x<<","<<v0.y<<","<<v0.z<<std::endl;
     }
 
-    return triangulatedCoords.data();
+    return triangulatedCoords;
 }

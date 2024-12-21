@@ -1,5 +1,6 @@
 #include "SimulationWrapper.h"
 #include "Window.h"
+#include <iostream>
 
 SimulationWrapper::SimulationWrapper()
     :
@@ -30,7 +31,7 @@ void SimulationWrapper::removeBombParticle() {
     simulation.removeBombParticle();
 }
 
-const Coord* SimulationWrapper::getParticleCoords(int* size) {
+const Coord* SimulationWrapper::getParticleCoords(size_t* size) {
     const auto& particles = simulation.getParticles();
     coords.clear();
     coords.reserve(particles.size());
@@ -47,13 +48,22 @@ const Coord* SimulationWrapper::getParticleCoords(int* size) {
     return coords.data();
 }
 
-const Coord* SimulationWrapper::triangulate(Coord* coords) {
-    // Determine the count of coordinates
-    std::size_t count = 0;
-    while (coords[count].x != 0 || coords[count].y != 0 || coords[count].z != 0) {
-        ++count;
+const Coord* SimulationWrapper::triangulate(Coord* coords_array, size_t input_size, size_t* output_size) {
+    // Convert Coord array to vector
+    std::vector<Coord> inputCoords(coords_array, coords_array + input_size);
+
+    // Perform triangulation
+    triangulatedCoords = triangulateInstance.triangulate(inputCoords.data(), input_size);
+
+    for (auto& coord : triangulatedCoords) {
+        std::cout<<coord.x<<", "<<coord.y<<", "<<coord.z<<std::endl;
     }
-    return triangulateInstance.triangulate(coords, count);
+
+    // Set output_size
+    *output_size = triangulatedCoords.size();
+
+    // Return triangulated coordinates
+    return triangulatedCoords.data();
 }
 
 
@@ -79,12 +89,12 @@ extern "C" {
         wrapper->removeBombParticle();
     }
 
-    const Coord* SimulationWrapper_getParticleCoords(SimulationWrapper* wrapper, int* size) {
+    const Coord* SimulationWrapper_getParticleCoords(SimulationWrapper* wrapper, size_t* size) {
         return wrapper->getParticleCoords(size);
     }
 
-    const Coord* SimulationWrapper_triangulate(SimulationWrapper* wrapper, Coord* coords) {
-        return wrapper->triangulate(coords);
+    const Coord* SimulationWrapper_triangulate(SimulationWrapper* wrapper, Coord* coords, size_t input_size, size_t* output_size) {
+        return wrapper->triangulate(coords, input_size, output_size);
     }
 
 } // extern "C"

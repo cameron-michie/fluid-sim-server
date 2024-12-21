@@ -8,9 +8,9 @@ async def main():
     ably = AblyRealtime(api_key)
 
     # Get channels
-    triangleCoords = ably.get('triangulated-coords')
-    particleCoords = ably.get('particle-coords')
-    bombCoords = ably.get('bomb-updates')
+    triangleCoords = ably.channels.get('triangulated-coords')
+    particleCoords = ably.channels.get('particle-coords')
+    bombCoords = ably.channels.get('bomb-updates')
 
     # Create simulation instance
     simulation = Simulation()

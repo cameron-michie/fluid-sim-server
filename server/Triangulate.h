@@ -16,7 +16,7 @@ struct Triangle {
 class Triangulate {
 public:
     Triangulate();
-    Coord* triangulate(Coord* coords, size_t input_size);
+    std::vector<Coord> triangulate(Coord* coords, size_t input_size);
 
 private:
     std::vector<Vertex> vertices;

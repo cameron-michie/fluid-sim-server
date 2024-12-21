@@ -20,8 +20,8 @@ extern "C" {
             void iterate();
             void addBombParticle(float x, float y);
             void removeBombParticle();
-            const Coord* triangulate(Coord* coords);
-            const Coord* getParticleCoords(int* size);
+            const Coord* triangulate(Coord* coords, size_t input_size, size_t* output_size);
+            const Coord* getParticleCoords(size_t* size);
         private:
             std::unique_ptr<RectangularGrid> grid;
             Simulation simulation;
@@ -36,8 +36,8 @@ extern "C" {
     void SimulationWrapper_iterate(SimulationWrapper* wrapper);
     void SimulationWrapper_addBombParticle(SimulationWrapper* wrapper, float x, float y);
     void SimulationWrapper_removeBombParticle(SimulationWrapper* wrapper);
-    const Coord* SimulationWrapper_getParticleCoords(SimulationWrapper* wrapper, int* size);
-    const Coord* SimulationWrapper_triangulate(SimulationWrapper* wrapper, Coord* coords);
+    const Coord* SimulationWrapper_getParticleCoords(SimulationWrapper* wrapper, size_t* size);
+    const Coord* SimulationWrapper_triangulate(SimulationWrapper* wrapper, Coord* coords, size_t input_size, size_t* output_size);
 }
 
 #endif // SIMULATION_WRAPPER_H

@@ -3,7 +3,7 @@ import os
 
 # Load the shared library
 script_dir = os.path.dirname(os.path.abspath(__file__))
-lib_path = os.path.join(script_dir, '../shared/mylib.so')
+lib_path = os.path.join(script_dir, '../server/mylib.so')
 lib = ctypes.CDLL(lib_path)
 
 # Define the Coord structure
@@ -24,6 +24,8 @@ lib.SimulationWrapper_addBombParticle.argtypes = [ctypes.POINTER(SimulationWrapp
 lib.SimulationWrapper_removeBombParticle.argtypes = [ctypes.POINTER(SimulationWrapper)]
 lib.SimulationWrapper_getParticleCoords.argtypes = [ctypes.POINTER(SimulationWrapper), ctypes.POINTER(ctypes.c_size_t)]
 lib.SimulationWrapper_getParticleCoords.restype = ctypes.POINTER(Coord)
+
+# Update the function prototype to include output_size
 lib.SimulationWrapper_triangulate.argtypes = [
     ctypes.POINTER(SimulationWrapper),
     ctypes.POINTER(Coord),
