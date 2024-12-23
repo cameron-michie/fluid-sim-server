@@ -49,20 +49,9 @@ const Coord* SimulationWrapper::getParticleCoords(size_t* size) {
 }
 
 const Coord* SimulationWrapper::triangulate(Coord* coords_array, size_t input_size, size_t* output_size) {
-    // Convert Coord array to vector
     std::vector<Coord> inputCoords(coords_array, coords_array + input_size);
-
-    // Perform triangulation
     triangulatedCoords = triangulateInstance.triangulate(inputCoords.data(), input_size);
-
-    for (auto& coord : triangulatedCoords) {
-        std::cout<<coord.x<<", "<<coord.y<<", "<<coord.z<<std::endl;
-    }
-
-    // Set output_size
     *output_size = triangulatedCoords.size();
-
-    // Return triangulated coordinates
     return triangulatedCoords.data();
 }
 
