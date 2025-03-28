@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useChannel } from 'ably/react';
 import * as THREE from 'three';
 import * as d3 from 'd3';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 function ThreeScene({ points }) {
   const mountRef = useRef(null);
@@ -10,6 +11,7 @@ function ThreeScene({ points }) {
   const cameraRef = useRef(null);
   const rendererRef = useRef(null);
   const trianglesGroupRef = useRef(null);
+  const [viewInfo, setViewInfo] = useState({ azimuthAngle: 0, polarAngle: 0, distance: 0 });
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -20,8 +22,17 @@ function ThreeScene({ points }) {
     sceneRef.current = scene;
 
     // Camera setup
-    const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
-    camera.position.set(400, -100, 400); // Adjusted position
+    const aspect = 800 / 600;
+    const frustumSize = 1000;
+    const camera = new THREE.OrthographicCamera(
+      frustumSize * aspect / -2,
+      frustumSize * aspect / 2,
+      frustumSize / 2,
+      frustumSize / -2,
+      0.1,
+      2000
+    );
+    camera.position.set(400, 300, 500); // Adjusted position
     camera.lookAt(400, 300, 0); // Adjusted lookAt target
     cameraRef.current = camera;
 
@@ -32,6 +43,23 @@ function ThreeScene({ points }) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Optional: for softer shadows
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
+
+    const orbit = new OrbitControls(camera, renderer.domElement);
+    orbit.target.set(400, 300, 0); // Set the target to the center of the mesh
+    orbit.update();
+    orbit.minPolarAngle = 1;
+    orbit.maxPolarAngle = 1;
+    orbit.minDistance = 400;
+    orbit.maxDistance = 1000;
+
+    // Update view info on change
+    orbit.addEventListener('change', () => {
+      setViewInfo({
+        azimuthAngle: orbit.getAzimuthalAngle(),
+        polarAngle: orbit.getPolarAngle(),
+        distance: orbit.getDistance(),
+      });
+    });
 
     const color = '#ffffff';
     const intensity = 1; // Reduced intensity for more balanced lighting
@@ -81,6 +109,7 @@ function ThreeScene({ points }) {
 
       // Dispose the renderer
       renderer.dispose();
+      renderer.forceContextLoss();
 
       // Dispose of geometries and materials in the scene
       scene.traverse((object) => {
@@ -135,6 +164,7 @@ function ThreeScene({ points }) {
 
           // Compute normals
           geometry.computeVertexNormals();
+          geometry.rotateX(-Math.PI / 2);
 
           const material = new THREE.MeshStandardMaterial({
             color: 0x87ceeb,
@@ -153,7 +183,16 @@ function ThreeScene({ points }) {
     }
   }, [points]); // Re-run this effect when points change
 
-  return <div ref={mountRef} />;
+  return (
+    <div>
+      <div style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(255, 255, 255, 0.8)', padding: '10px', borderRadius: '5px' }}>
+        <p>Azimuth Angle: {viewInfo.azimuthAngle.toFixed(2)}</p>
+        <p>Polar Angle: {viewInfo.polarAngle.toFixed(2)}</p>
+        <p>Distance: {viewInfo.distance.toFixed(2)}</p>
+      </div>
+      <div ref={mountRef} />
+    </div>
+  );
 }
 
 export default ThreeScene;
