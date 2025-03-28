@@ -1,1 +1,4 @@
 venv/
+scripts/__pycache__
+server/mylib.so
+frontend/3d-voronoi/.env

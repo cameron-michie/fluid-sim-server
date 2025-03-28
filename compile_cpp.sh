@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Ensure we are in the correct directory
-cd "$(dirname "$0")/shared"
+cd "$(dirname "$0")/server"
 
 # Set the output shared library name
 OUTPUT="mylib.so"
 
 # List of source files
-SOURCES="Main.cpp Simulation.cpp Kernel.cpp Particles.cpp RectangularGrid.cpp Grid.cpp SimulationWrapper.cpp"
+SOURCES="Main.cpp Simulation.cpp Kernel.cpp Particles.cpp RectangularGrid.cpp Grid.cpp SimulationWrapper.cpp Triangulate.cpp Delaunator.cpp"
 
 # Compile each source file into an object file
 echo "Compiling source files into object files..."
@@ -23,4 +23,4 @@ g++ -shared -o $OUTPUT *.o || exit 1
 echo "Cleaning up object files..."
 rm -f *.o
 
-echo "C++ library compiled to shared/$OUTPUT"
+echo "C++ library compiled to server/$OUTPUT"

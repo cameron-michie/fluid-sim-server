@@ -10,4 +10,4 @@ set -e
 source venv/bin/activate
 
 # Run the Python script
-python3 scripts/main.py
+python3 scripts/main2.py

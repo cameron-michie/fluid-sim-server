@@ -1,6 +1,5 @@
 import ctypes
 import os
-import time
 import json
 import asyncio
 
@@ -17,7 +16,8 @@ lib = ctypes.CDLL(lib_path)
 # Define the Coord structure
 class Coord(ctypes.Structure):
     _fields_ = [("x", ctypes.c_float),
-                ("y", ctypes.c_float)]
+                ("y", ctypes.c_float),
+                ("z", ctypes.c_float)]
 
 # Define the SimulationWrapper structure
 class SimulationWrapper(ctypes.Structure):
@@ -31,27 +31,45 @@ lib.SimulationWrapper_addBombParticle.argtypes = [ctypes.POINTER(SimulationWrapp
 lib.SimulationWrapper_removeBombParticle.argtypes = [ctypes.POINTER(SimulationWrapper)]
 lib.SimulationWrapper_getParticleCoords.argtypes = [ctypes.POINTER(SimulationWrapper), ctypes.POINTER(ctypes.c_int)]
 lib.SimulationWrapper_getParticleCoords.restype = ctypes.POINTER(Coord)
-
+lib.SimulationWrapper_triangulate.argtypes = [ctypes.POINTER(SimulationWrapper), ctypes.POINTER(Coord)]
+lib.SimulationWrapper_triangulate.restype = ctypes.POINTER(Coord)[ctypes.POINTER(Coord), ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+lib.SimulationWrapper_triangulate.restype = ctypes.POINTER(Coord)
 
 def coord_to_compact_list(coord):
-    return [round(coord.x, 2), round(coord.y, 2)]
+    return [round(coord.x, 2), round(coord.y, 2), round(coord.z, 2)]
 
 def get_particle_coords(sim):
     size = ctypes.c_int()
     coords_ptr = lib.SimulationWrapper_getParticleCoords(sim, ctypes.byref(size))
+    triangulated_coords_ptr = lib.SimulationWrapper_triangulate(sim, coords_ptr)
 
-    coords = [coords_ptr[i] for i in range(size.value)]
+    coords = [triangulated_coords_ptr[i] for i in range(size.value)]
     coords_list = [coord_to_compact_list(coord) for coord in coords]
     return coords_list
 
 def subtract_and_shift(arr, func, sim):
-    if not arr: return []  # Check if empty
+    if not arr:
+        return []  # Check if empty
     count_zeros_removed, result = 0, []
     print(arr)
     
     for x in arr:
-        if x > 1: result.append(x - 1)
-        else:  count_zeros_removed += 1
+        if x > 1:
+    coords_list = [coord_to_compact_list(coords_array[i]) for i in range(num_coords)]
+
+    return coords_list
+
+def subtract_and_shift(arr, func, sim):
+    if not arr:
+        return []  # Check if empty
+    count_zeros_removed, result = 0, []
+    print(arr)
+    
+    for x in arr:
+        if x > 1:
+            result.append(x - 1)
+        else:
+            count_zeros_removed += 1
     
     for _ in range(count_zeros_removed):
         func(sim)
@@ -66,7 +84,7 @@ async def process_simulation(sim, channel):
         coords_json = json.dumps(coords_dict)
         await channel.publish(f"positions-{_}", coords_json)
         bombsTicker = subtract_and_shift(bombsTicker, lib.SimulationWrapper_removeBombParticle, sim)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.25)
 
 async def listener(message, queue):
     await queue.put(message)
@@ -98,6 +116,7 @@ async def main():
 
     rest = AblyRest('0GHh-Q.M8fW0w:YJKOVLZO7f0pj6z6BRvCbPzM_absDlhfXjdb7AYgpo4')
     realtime = AblyRealtime('0GHh-Q.M8fW0w:YJKOVLZO7f0pj6z6BRvCbPzM_absDlhfXjdb7AYgpo4')
+        lib.SimulationWrapper_delete(sim)
     channel = rest.channels.get('particle-positions')
     bombChannel = realtime.channels.get('bomb-updates')
 
@@ -111,6 +130,10 @@ async def main():
         await asyncio.gather(simulation_task, message_processing_task)
     finally:
         lib.SimulationWrapper_delete(sim)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
 
 if __name__ == "__main__":
     asyncio.run(main())

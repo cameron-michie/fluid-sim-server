@@ -10,9 +10,12 @@
     "d3": "^7.9.0",
     "d3-delaunay": "^6.0.4",
     "dotenv": "^16.4.5",
+    "gl-matrix": "^3.4.3",
+    "pako": "^2.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-scripts": "5.0.1",
+    "regl": "^2.1.1",
     "three": "^0.166.1",
     "web-vitals": "^2.1.4"
   },
@@ -39,5 +42,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@types/three": "^0.171.0"
   }
 }

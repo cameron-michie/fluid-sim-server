@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time 2D Fluid Simulation</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        svg {
+            border: 1px solid black;
+            margin: 10px;
+        }
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <svg id="triangulation" width="800" height="600"></svg>
+        <svg id="raw-particles" width="800" height="600"></svg>
+    </div>
+    <script>
+        (async function() {
+            const ably = new Ably.Realtime({ key: '0GHh-Q.M8fW0w:YJKOVLZO7f0pj6z6BRvCbPzM_absDlhfXjdb7AYgpo4', clientId: "ClientID" });
+            
+            await ably.connection.once('connected');
+            console.log('Connected to Ably!');
+            
+            const triangulatedChannel = ably.channels.get('triangulated-coords');
+            const particleCoordsChannel = ably.channels.get('particle-coords');
+            const bombChannel = ably.channels.get('bomb-updates');
+
+            const width = 800;
+            const height = 600;
+            const triangulationSvg = d3.select("#triangulation");
+            const rawSvg = d3.select("#raw-particles");
+
+            function drawTriangulation(rawCoords) {
+                triangulationSvg.selectAll("*").remove();
+
+                // Use rawCoords directly
+                const triangles = [];
+                for (let i = 0; i < rawCoords.length; i += 3) {
+                    if (i + 2 < rawCoords.length) {
+                        triangles.push([
+                            { x: rawCoords[i][0], y: rawCoords[i][1] },
+                            { x: rawCoords[i + 1][0], y: rawCoords[i + 1][1] },
+                            { x: rawCoords[i + 2][0], y: rawCoords[i + 2][1] }
+                        ]);
+                    }
+                }
+
+                // Draw triangles using raw x and y values
+                triangulationSvg.selectAll("path")
+                    .data(triangles)
+                    .enter()
+                    .append("path")
+                    .attr("d", d => {
+                        return `M${d[0].x},${d[0].y}L${d[1].x},${d[1].y}L${d[2].x},${d[2].y}Z`;
+                    })
+                    .attr("fill", "none")
+                    .attr("stroke", "blue")
+                    .attr("stroke-width", "1");
+            }
+
+            function drawRawParticles(coords) {
+                rawSvg.selectAll("*").remove();
+
+                rawSvg.selectAll("circle")
+                    .data(coords)
+                    .enter()
+                    .append("circle")
+                    .attr("cx", d => d[0])
+                    .attr("cy", d => d[1])
+                    .attr("r", 2)
+                    .attr("fill", "red");
+            }
+
+            // Subscribe to the triangulated coordinates channel
+            await triangulatedChannel.subscribe(message => {
+                try {
+                    const coordsArray = JSON.parse(pako.inflate(message.data, { to: 'string' }));
+                    drawTriangulation(coordsArray);
+                } catch (error) {
+                    console.error('Error decompressing data:', error);
+                }
+            });
+
+            // Subscribe to the particle coordinates channel
+            await particleCoordsChannel.subscribe(message => {
+                const coordsArray = JSON.parse(message.data);
+                drawRawParticles(coordsArray);
+            });
+
+            // Click handler for bomb particles
+            triangulationSvg.on("click", function(event) {
+                const [x, y] = d3.pointer(event);
+                if (x >= 0 && x <= width && y >= 0 && y <= height) {
+                    bombChannel.publish('bomb-update', { x, y });
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
